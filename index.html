@@ -144,7 +144,7 @@
 </div>
 
 <div class="tips">PC：方向键移动 &nbsp;|&nbsp; 手机：滑动屏幕</div>
-<div style="margin-top:8px;font-size:11px;color:#ccc5bb;text-align:center;">v1.6</div>
+<div style="margin-top:8px;font-size:11px;color:#ccc5bb;text-align:center;">v1.7</div>
 
 <script>
 const ROWS = 4, COLS = 4, ANIM = 110;
@@ -153,20 +153,29 @@ let uid = 0;
 
 // grid[r][c] = { id, val } | null
 
-function pos(r, c) {
-  // Use actual rendered position of background cells — pixel-perfect on all devices
+// Cache layout metrics — recomputed on resize/init
+let _layout = null;
+function layout() {
+  if (_layout) return _layout;
   const cells = document.querySelectorAll('.cell-bg');
-  const layer = document.getElementById('tile-layer');
-  const idx = r * COLS + c;
-  const cell = cells[idx];
-  if (!cell) return { x: 0, y: 0, s: 0 };
-  const layerRect = layer.getBoundingClientRect();
-  const cellRect  = cell.getBoundingClientRect();
-  return {
-    x: cellRect.left - layerRect.left,
-    y: cellRect.top  - layerRect.top,
-    s: cellRect.width,
+  const r0 = cells[0].getBoundingClientRect();
+  const r1 = cells[1].getBoundingClientRect(); // same row, next col
+  const r4 = cells[4].getBoundingClientRect(); // next row, same col
+  const layer = document.getElementById('tile-layer').getBoundingClientRect();
+  _layout = {
+    s:    r0.width,                   // cell size
+    gapX: r1.left - r0.right,         // horizontal gap
+    gapY: r4.top  - r0.bottom,        // vertical gap
+    ox:   r0.left - layer.left,        // origin x (offset of first cell in layer)
+    oy:   r0.top  - layer.top,         // origin y
   };
+  return _layout;
+}
+function invalidateLayout() { _layout = null; }
+
+function pos(r, c) {
+  const {s, gapX, gapY, ox, oy} = layout();
+  return { x: ox + c*(s+gapX), y: oy + r*(s+gapY), s };
 }
 function tx(r, c) {
   const {x,y} = pos(r,c);
@@ -420,8 +429,9 @@ gw.addEventListener('touchend',e=>{
 document.getElementById('newGame').onclick=init;
 document.getElementById('overlayBtn').onclick=init;
 
-// Resize: reposition tiles
+// Resize: recompute layout and reposition all tiles
 window.addEventListener('resize',()=>{
+  invalidateLayout();
   for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++) {
     const t=grid?.[r]?.[c]; if(t) moveEl(t.id,r,c);
   }
@@ -431,8 +441,8 @@ window.addEventListener('resize',()=>{
 const bg=document.getElementById('gridBg');
 for(let i=0;i<16;i++){ const d=document.createElement('div');d.className='cell-bg';bg.appendChild(d); }
 
-// Wait for layout before first render so getBoundingClientRect is accurate
-requestAnimationFrame(() => requestAnimationFrame(() => init()));
+// Wait for layout to be fully painted before measuring
+requestAnimationFrame(() => requestAnimationFrame(() => { invalidateLayout(); init(); }));
 </script>
 </body>
 </html>
