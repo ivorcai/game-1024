@@ -292,17 +292,19 @@ function slide(row) {
   return { arr, gained };
 }
 
-function rotated(b) { return b[0].map((_, c) => b.map(r => r[c])); }
-function flipH(b)   { return b.map(r => [...r].reverse()); }
+function transpose(b) { return b[0].map((_, c) => b.map(r => r[c])); }
+function flipH(b) { return b.map(r => [...r].reverse()); }
+function flipV(b) { return [...b].reverse(); }
 
 function move(dir) {
   if (gameOver) return;
   let moved = false, totalGained = 0;
   let b = board.map(r => [...r]);
 
-  if (dir === 'right')  b = flipH(b);
-  if (dir === 'up')     b = rotated(b);
-  if (dir === 'down')   b = rotated(rotated(rotated(b)));
+  // Transform so we always slide left
+  if (dir === 'right')       { b = flipH(b); }
+  else if (dir === 'up')     { b = transpose(b); }
+  else if (dir === 'down')   { b = transpose(flipV(b)); }
 
   for (let r = 0; r < ROWS; r++) {
     const orig = b[r].join();
@@ -311,9 +313,10 @@ function move(dir) {
     b[r] = arr; totalGained += gained;
   }
 
-  if (dir === 'right')  b = flipH(b);
-  if (dir === 'up')     b = rotated(rotated(rotated(b)));
-  if (dir === 'down')   b = rotated(b);
+  // Reverse transform
+  if (dir === 'right')       { b = flipH(b); }
+  else if (dir === 'up')     { b = transpose(b); }
+  else if (dir === 'down')   { b = flipV(transpose(b)); }
 
   if (!moved) return;
   board = b;
