@@ -152,16 +152,20 @@ let uid = 0;
 
 // grid[r][c] = { id, val } | null
 
-function cellSize() {
-  const layer = document.getElementById('tile-layer');
-  return (layer.offsetWidth - (COLS-1) * gap()) / COLS;
-}
-function gap() {
-  return parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--gap')) || 10;
-}
 function pos(r, c) {
-  const s = cellSize(), g = gap();
-  return { x: c*(s+g), y: r*(s+g), s };
+  // Use actual rendered position of background cells — pixel-perfect on all devices
+  const cells = document.querySelectorAll('.cell-bg');
+  const layer = document.getElementById('tile-layer');
+  const idx = r * COLS + c;
+  const cell = cells[idx];
+  if (!cell) return { x: 0, y: 0, s: 0 };
+  const layerRect = layer.getBoundingClientRect();
+  const cellRect  = cell.getBoundingClientRect();
+  return {
+    x: Math.round(cellRect.left - layerRect.left),
+    y: Math.round(cellRect.top  - layerRect.top),
+    s: Math.round(cellRect.width),
+  };
 }
 function tx(r, c) {
   const {x,y} = pos(r,c);
@@ -426,7 +430,8 @@ window.addEventListener('resize',()=>{
 const bg=document.getElementById('gridBg');
 for(let i=0;i<16;i++){ const d=document.createElement('div');d.className='cell-bg';bg.appendChild(d); }
 
-init();
+// Wait for layout before first render so getBoundingClientRect is accurate
+requestAnimationFrame(() => requestAnimationFrame(() => init()));
 </script>
 </body>
 </html>
